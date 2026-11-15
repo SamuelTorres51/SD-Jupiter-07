@@ -1,0 +1,304 @@
+{
+  "modelName": "E4-2",
+  "timeUnit": "s",
+  "places": [
+    {
+      "name": "Fonte",
+      "initialMarking": 1,
+      "stringMarking": "1",
+      "initialStringMarking": "1",
+      "id": "p1",
+      "x": 100,
+      "y": 270
+    },
+    {
+      "name": "Pendente",
+      "initialMarking": 0,
+      "stringMarking": "0",
+      "initialStringMarking": "0",
+      "id": "p2",
+      "x": 320,
+      "y": 270
+    },
+    {
+      "name": "Vagas",
+      "initialMarking": 10,
+      "stringMarking": "B",
+      "initialStringMarking": "B",
+      "id": "p3",
+      "x": 460,
+      "y": 110
+    },
+    {
+      "name": "Fila",
+      "initialMarking": 0,
+      "stringMarking": "0",
+      "initialStringMarking": "0",
+      "id": "p4",
+      "x": 570,
+      "y": 270
+    },
+    {
+      "name": "Livres",
+      "initialMarking": 2,
+      "stringMarking": "C",
+      "initialStringMarking": "C",
+      "id": "p5",
+      "x": 720,
+      "y": 110
+    },
+    {
+      "name": "Ocupados",
+      "initialMarking": 0,
+      "stringMarking": "0",
+      "initialStringMarking": "0",
+      "id": "p6",
+      "x": 820,
+      "y": 270
+    }
+  ],
+  "definitions": [
+    {
+      "name": "LAMBDA",
+      "type": "DOUBLE",
+      "value": "25",
+      "id": "def0"
+    },
+    {
+      "name": "TS",
+      "type": "DOUBLE",
+      "value": "0.1",
+      "id": "def1"
+    },
+    {
+      "name": "C",
+      "type": "INTEGER",
+      "value": "2",
+      "id": "def2"
+    },
+    {
+      "name": "B",
+      "type": "INTEGER",
+      "value": "10",
+      "id": "def3"
+    }
+  ],
+  "rewardMeasures": [
+    {
+      "name": "TP",
+      "expression": "E{#Ocupados} / TS",
+      "id": "rm0"
+    },
+    {
+      "name": "MRT",
+      "expression": "IF E{#Ocupados} > 0 THEN ((E{#Fila} + E{#Ocupados}) * TS) / E{#Ocupados} ELSE 0",
+      "id": "rm1"
+    },
+    {
+      "name": "MQT",
+      "expression": "IF E{#Ocupados} > 0 THEN (E{#Fila} * TS) / E{#Ocupados} ELSE 0",
+      "id": "rm2"
+    },
+    {
+      "name": "U",
+      "expression": "(E{#Ocupados} / C) * 100",
+      "id": "rm3"
+    },
+    {
+      "name": "DP",
+      "expression": "P{#Vagas = 0} * 100",
+      "id": "rm4"
+    },
+    {
+      "name": "MPT",
+      "expression": "IF E{#Ocupados} > 0 THEN E{#Ocupados} / (E{#Ocupados} / TS) ELSE 0",
+      "id": "rm5"
+    },
+    {
+      "name": "LQ",
+      "expression": "E{#Fila}",
+      "id": "rm6"
+    },
+    {
+      "name": "LB",
+      "expression": "E{#Ocupados}",
+      "id": "rm7"
+    }
+  ],
+  "transitions": [
+    {
+      "name": "Chegada",
+      "type": "TIMED",
+      "firingPolicy": "SINGLE_SERVER",
+      "raceType": "RACE_WITH_ENABLING_MEMORY",
+      "priority": 1,
+      "inputArcs": [
+        {
+          "type": "INPUT",
+          "place": "Fonte",
+          "multiplicity": 1,
+          "weight": 1
+        }
+      ],
+      "outputArcs": [
+        {
+          "type": "OUTPUT",
+          "place": "Fonte",
+          "multiplicity": 1,
+          "weight": 1
+        },
+        {
+          "type": "OUTPUT",
+          "place": "Pendente",
+          "multiplicity": 1,
+          "weight": 1
+        }
+      ],
+      "inhibitorArcs": [],
+      "id": "t1",
+      "x": 210,
+      "y": 270,
+      "distribution": {
+        "type": "exponential",
+        "parameters": {
+          "Mean delay": "1 / LAMBDA"
+        }
+      }
+    },
+    {
+      "name": "Admitir",
+      "type": "IMMEDIATE",
+      "firingPolicy": "SINGLE_SERVER",
+      "raceType": "RACE_WITH_ENABLING_MEMORY",
+      "priority": 1,
+      "inputArcs": [
+        {
+          "type": "INPUT",
+          "place": "Pendente",
+          "multiplicity": 1,
+          "weight": 1
+        },
+        {
+          "type": "INPUT",
+          "place": "Vagas",
+          "multiplicity": 1,
+          "weight": 1
+        }
+      ],
+      "outputArcs": [
+        {
+          "type": "OUTPUT",
+          "place": "Fila",
+          "multiplicity": 1,
+          "weight": 1
+        }
+      ],
+      "inhibitorArcs": [],
+      "id": "t2",
+      "x": 460,
+      "y": 270,
+      "weight": 1
+    },
+    {
+      "name": "Descartar",
+      "type": "IMMEDIATE",
+      "firingPolicy": "SINGLE_SERVER",
+      "raceType": "RACE_WITH_ENABLING_MEMORY",
+      "priority": 1,
+      "inputArcs": [
+        {
+          "type": "INPUT",
+          "place": "Pendente",
+          "multiplicity": 1,
+          "weight": 1
+        }
+      ],
+      "outputArcs": [],
+      "inhibitorArcs": [
+        {
+          "type": "INHIBITOR",
+          "place": "Vagas",
+          "multiplicity": 1,
+          "weight": 1
+        }
+      ],
+      "id": "t3",
+      "x": 320,
+      "y": 450,
+      "weight": 1
+    },
+    {
+      "name": "Iniciar",
+      "type": "IMMEDIATE",
+      "firingPolicy": "SINGLE_SERVER",
+      "raceType": "RACE_WITH_ENABLING_MEMORY",
+      "priority": 2,
+      "inputArcs": [
+        {
+          "type": "INPUT",
+          "place": "Fila",
+          "multiplicity": 1,
+          "weight": 1
+        },
+        {
+          "type": "INPUT",
+          "place": "Livres",
+          "multiplicity": 1,
+          "weight": 1
+        }
+      ],
+      "outputArcs": [
+        {
+          "type": "OUTPUT",
+          "place": "Ocupados",
+          "multiplicity": 1,
+          "weight": 1
+        },
+        {
+          "type": "OUTPUT",
+          "place": "Vagas",
+          "multiplicity": 1,
+          "weight": 1
+        }
+      ],
+      "inhibitorArcs": [],
+      "id": "t4",
+      "x": 700,
+      "y": 270,
+      "weight": 1
+    },
+    {
+      "name": "Concluir",
+      "type": "TIMED",
+      "firingPolicy": "INFINITY_SERVER",
+      "raceType": "RACE_WITH_ENABLING_MEMORY",
+      "priority": 1,
+      "inputArcs": [
+        {
+          "type": "INPUT",
+          "place": "Ocupados",
+          "multiplicity": 1,
+          "weight": 1
+        }
+      ],
+      "outputArcs": [
+        {
+          "type": "OUTPUT",
+          "place": "Livres",
+          "multiplicity": 1,
+          "weight": 1
+        }
+      ],
+      "inhibitorArcs": [],
+      "id": "t5",
+      "x": 960,
+      "y": 270,
+      "distribution": {
+        "type": "exponential",
+        "parameters": {
+          "Mean delay": "TS"
+        }
+      }
+    }
+  ]
+}

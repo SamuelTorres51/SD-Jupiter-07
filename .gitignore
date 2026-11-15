@@ -1,0 +1,10 @@
+tmp/
+.chart-data-*/
+__pycache__/
+*.pyc
+docs/
+relatório/
+*.aux
+*.log
+*.out
+*.synctex.gz
