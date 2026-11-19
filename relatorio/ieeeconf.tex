@@ -18,7 +18,7 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-O aumento da demanda de um serviço web pode provocar filas, atrasos e descarte de requisições. Neste trabalho, foi construído um modelo de Redes de Petri Estocásticas no Jupiter para estudar esse comportamento. O sistema possui fila limitada, chegada de requisições e servidores que processam tarefas em paralelo. Foram realizados quatro conjuntos de experimentos, variando demanda, número de servidores, tamanho da fila e combinações de demanda e recursos. Os resultados mostram que aumentar somente a fila reduz perdas, mas também aumenta o tempo de resposta. Para 20 requisições por segundo, passar de dois para três servidores reduziu a resposta média de 0,339 para 0,141 segundo. Na carga de 25 requisições por segundo, quatro servidores alcançaram resposta média de 0,121 segundo e descarte estimado de 0,11\%. As conclusões se referem às hipóteses do modelo e servem como exercício de dimensionamento, sem substituir medições de um servidor real.
+O aumento da demanda de um serviço web pode provocar filas, atrasos e descarte de requisições. Neste trabalho, foi construído um modelo de Redes de Petri Estocásticas (SPN, na sigla em inglês) no Jupiter para estudar esse comportamento. O sistema possui fila limitada, chegada de requisições e servidores que processam tarefas em paralelo. Foram realizados quatro conjuntos de experimentos, variando demanda, número de servidores, tamanho da fila e combinações de demanda e recursos. Os resultados mostram que aumentar somente a fila reduz perdas, mas também aumenta o tempo de resposta. Para 20 requisições por segundo, passar de dois para três servidores reduziu a resposta média de 0,339 para 0,141 segundo. Na carga de 25 requisições por segundo, quatro servidores alcançaram resposta média de 0,121 segundo e descarte estimado de 0,11\%. Os resultados ajudam a comparar as configurações do modelo, mas ainda seria preciso medir uma aplicação real antes de usar esses valores na prática.
 \end{abstract}
 \noindent\textbf{Palavras-chave:} servidor web, SPN, Jupiter, avaliação de desempenho, dimensionamento.
 
@@ -27,32 +27,29 @@ Um serviço web recebe requisições que disputam recursos de processamento. Qua
 
 Instalar mais servidores é uma alternativa, mas envolve disponibilizar recursos que podem ficar ociosos em períodos de menor movimento. Outra possibilidade é ampliar a fila. Essa mudança permite manter mais requisições no sistema, porém não aumenta a velocidade de processamento de cada servidor. Assim, uma fila maior pode melhorar a vazão observada e, ao mesmo tempo, piorar a experiência de quem aguarda uma resposta.
 
-As Redes de Petri permitem representar estados, atividades e disputa por recursos \cite{murata}. Sua extensão estocástica inclui tempos de execução e possibilita avaliações quantitativas. As redes generalizadas também combinam transições temporizadas com transições imediatas, úteis para decisões que não precisam consumir tempo no modelo \cite{marsan}. Esse formalismo foi escolhido porque mostra de maneira explícita a relação entre as requisições e os servidores disponíveis.
+As Redes de Petri permitem representar estados, atividades e disputa por recursos \cite{murata}. Na versão estocástica, os tempos das atividades podem variar de forma aleatória, permitindo calcular medidas de desempenho. As redes generalizadas também combinam transições temporizadas com transições imediatas, úteis para decisões que não precisam consumir tempo no modelo \cite{marsan}. Esse tipo de rede foi escolhido porque permite acompanhar as requisições e mostrar quando elas precisam esperar por um servidor.
 
 O artigo de Macêdo et al.\ \cite{macedo}, disponibilizado na disciplina, apresenta uma avaliação de redes veiculares com SPN. Ele foi usado como referência de organização: apresentar a arquitetura, explicar a rede, definir métricas e discutir cenários. O contexto e a rede deste trabalho são diferentes. Aqui, a análise está concentrada em um serviço web com uma fila compartilhada e capacidade limitada.
 
-A pergunta de pesquisa é: \textit{como a taxa de chegada, o número de servidores e o limite da fila afetam a vazão, o tempo de resposta e o descarte de requisições de um serviço web?} Para responder, o modelo foi implementado e avaliado no Jupiter \cite{jupiter}. As principais entregas são a rede parametrizada, os quatro conjuntos de experimentos e uma recomendação de capacidade baseada nos resultados.
+A pergunta de pesquisa é: \textit{como a taxa de chegada, o número de servidores e o limite da fila afetam a vazão, o tempo de resposta e o descarte de requisições de um serviço web?} Para responder, o modelo foi implementado e avaliado no Jupiter \cite{jupiter}. O trabalho apresenta o modelo, quatro conjuntos de experimentos e uma sugestão de quantidade de servidores a partir dos resultados.
 
 \section{Arquitetura}
-Considera-se um serviço web com uma entrada comum e servidores de mesma capacidade. Uma requisição chega ao ponto de admissão. Se existe vaga, ela entra na fila e aguarda um servidor livre. Ao iniciar o processamento, libera a vaga de espera. Ao terminar, sai do sistema e devolve o servidor ao conjunto de recursos disponíveis. Se não existe vaga no instante da chegada, a requisição é descartada.
+O sistema estudado é um serviço web com uma entrada comum e servidores de mesma capacidade. Primeiro, é verificado se há espaço para receber a requisição. Se existe vaga, ela entra na fila e aguarda um servidor livre. Ao iniciar o processamento, libera a vaga de espera. Ao terminar, sai do sistema e devolve o servidor ao conjunto de recursos disponíveis. Se não existe vaga no instante da chegada, a requisição é descartada.
 
 O número de servidores é representado por $C$ e a quantidade máxima de requisições aguardando é $B$. Portanto, a capacidade total é $K=B+C$, incluindo as requisições em serviço. No cenário de referência, $C=2$ e $B=10$: podem existir até 12 requisições aceitas simultaneamente. Uma vaga de espera não corresponde a um servidor adicional.
 
-Adotou-se uma fila única, sem prioridades ou interrupção do atendimento. O balanceamento entre servidores é idealizado e não possui atraso próprio. Rede, banco de dados, cache, falhas e diferenças entre tipos de requisição ficam fora do escopo. Essas simplificações permitem observar separadamente o efeito dos recursos de atendimento.
+Adotou-se uma fila única, sem prioridades ou interrupção do atendimento. A distribuição das requisições entre os servidores é considerada imediata, sem tempo adicional. Rede, banco de dados, cache, falhas e diferenças entre tipos de requisição ficam fora do escopo. Essas simplificações permitem observar separadamente o efeito dos recursos de atendimento.
 
-\clearpage
-\twocolumn[{%
-\begin{minipage}{\textwidth}
+\begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{figuras/modelo_spn.pdf}
-\captionof{figure}{Rede SPN do servidor web avaliada no Jupiter. Círculos representam lugares; barras preenchidas, transições imediatas; retângulos vazados, transições exponenciais. O círculo aberto na ponta do arco de Vagas para Descartar indica inibição.}
+\caption{Rede SPN do servidor web avaliada no Jupiter. Círculos representam lugares; barras preenchidas, transições imediatas; retângulos vazados, transições exponenciais. O círculo aberto na ponta do arco de Vagas para Descartar indica inibição.}
 \label{fig:spn}
-\end{minipage}
-}]
+\end{figure*}
 
 \section{Modelagem do sistema}
 \subsection{Lugares, marcação e fluxo}
-A Figura~\ref{fig:spn} mostra a rede implementada. As chegadas seguem um processo de Poisson de taxa $\lambda$, e o tempo de serviço é exponencial com média $TS=0{,}1$ s. Assim, cada servidor tem taxa média $\mu=1/TS=10$ requisições/s. Esses valores são hipóteses didáticas do estudo, e não medidas de uma aplicação em produção.
+A Figura~\ref{fig:spn} mostra a rede implementada. As chegadas seguem um processo de Poisson de taxa $\lambda$, e o tempo de serviço é exponencial com média $TS=0{,}1$ s. Isso significa que cada servidor consegue atender, em média, dez requisições por segundo. Esses valores foram escolhidos para o exercício e não vieram de medições de uma aplicação real. Na rede, cada token é uma marca que representa uma requisição ou um recurso disponível, conforme o lugar em que está.
 
 \begin{table}[h]
 \centering
@@ -74,12 +71,12 @@ Ocupados & 0 & Requisições em serviço\\
 
 Chegada consome e devolve o token de Fonte, além de produzir um token em Pendente. Ela utiliza política de servidor único e atraso médio $1/\lambda$. Isso mantém a demanda externa ativa mesmo quando a fila está cheia. Admitir consome Pendente e Vagas e produz Fila. Descartar consome Pendente, mas um arco inibidor com peso 1 vindo de Vagas só permite seu disparo quando não há vaga disponível.
 
-Iniciar consome um token de Fila e outro de Livres, produzindo Ocupados e devolvendo uma vaga. Essa transição imediata tem prioridade 2; as demais imediatas possuem prioridade 1 e peso 1. Concluir consome Ocupados e devolve Livres. Sua política é de servidores infinitos, com média $TS$. O paralelismo efetivo continua limitado a $C$, pois nenhuma requisição inicia sem consumir um servidor livre.
+Iniciar consome um token de Fila e outro de Livres, produzindo Ocupados e devolvendo uma vaga. Essa transição imediata tem prioridade 2; as demais imediatas possuem prioridade 1 e peso 1. Concluir consome Ocupados e devolve Livres. Sua política é de servidores infinitos, com média $TS$. Apesar do nome dessa política, o número de atendimentos ao mesmo tempo continua limitado aos $C$ servidores. Uma requisição só começa quando há um token em Livres.
 
-Os arcos têm peso unitário. As decisões e o início do serviço não acrescentam atraso artificial. Não se acumulam tokens de requisições concluídas: a saída é representada pelo disparo de Concluir. Dessa forma, a rede continua limitada. As invariantes $\#Fila+\#Vagas=B$ e $\#Livres+\#Ocupados=C$ expressam a conservação das vagas e dos servidores.
+Os arcos têm peso unitário. As decisões e o início do serviço não acrescentam atraso artificial. Não se acumulam tokens de requisições concluídas: a saída é representada pelo disparo de Concluir. Dessa forma, a rede continua limitada. A soma das requisições na Fila com as vagas livres é sempre $B$. Da mesma forma, a soma dos servidores livres com os ocupados é sempre $C$. Essas relações ajudam a conferir se a rede mantém os limites definidos.
 
 \subsection{Métricas de desempenho}
-Sejam $\mq=E[\#Fila]$ e $\mb=E[\#Ocupados]$, as quantidades médias em espera e em processamento. As seis métricas abaixo foram cadastradas como recompensas no Jupiter:
+Foram usadas seis medidas: vazão (TP), tempo médio de resposta (MRT), tempo médio de espera (MQT), utilização dos servidores (U), probabilidade de descarte (DP) e tempo médio de processamento (MPT). A resposta inclui espera e processamento. Nas fórmulas, $\mq$ é a quantidade média de requisições na fila e $\mb$ é a quantidade média em atendimento. As expressões cadastradas no Jupiter são:
 \begin{align}
 TP &= \mb/TS \quad [\text{requisições/s}],\label{eq:tp}\\
 MRT &= (\mq+\mb)/TP \quad [\text{s}],\label{eq:mrt}\\
@@ -89,17 +86,15 @@ DP &= 100\,P(\#Vagas=0) \quad [\%],\label{eq:dp}\\
 MPT &= \mb/TP \quad [\text{s}].\label{eq:mpt}
 \end{align}
 
-As equações de tempo usam a Lei de Little \cite{little}, com a vazão das requisições aceitas. Usar diretamente a taxa externa em um sistema com perdas subestimaria esses tempos. No arquivo do modelo, os quocientes são protegidos por uma condição que retorna zero se $\mb=0$. Neste estudo, as taxas positivas permitem calcular as métricas em todos os cenários.
+Na expressão de DP, $P(\#Vagas=0)$ é a probabilidade de não haver vaga livre na fila. O símbolo $\#$ indica a quantidade de tokens no lugar. As equações de tempo usam a Lei de Little \cite{little}, com a vazão das requisições aceitas. Usar diretamente a taxa externa em um sistema com perdas subestimaria esses tempos. No arquivo do modelo, as divisões têm uma condição que retorna zero se $\mb=0$. Neste estudo, as taxas positivas permitem calcular as métricas em todos os cenários.
 
-Como a chegada é de Poisson e não antecipa o estado futuro da rede, a propriedade PASTA \cite{wolff} permite relacionar a fração de chegadas que encontra a fila cheia com a probabilidade temporal de fila cheia. Essa é a justificativa para a expressão de $DP$. Em regime estacionário, o fluxo esperado também deve satisfazer $TP=\lambda(1-DP/100)$.
+Para as chegadas de Poisson deste modelo, a propriedade PASTA \cite{wolff} permite usar a parcela do tempo em que a fila está cheia para estimar a parcela de chegadas descartadas. Por isso, DP foi calculado pela probabilidade de não haver vaga. Em média, a vazão deve corresponder à taxa de chegada descontando as requisições recusadas.
 
-MRT e MQT descrevem requisições aceitas e posteriormente concluídas. O descarte não é contado como atendimento rápido. MPT resulta igual a $TS$ por construção; portanto, não é uma evidência independente de que o serviço foi calibrado corretamente. Como os tokens não identificam clientes, o modelo trabalha com médias agregadas e não registra a ordem individual da fila nem percentis de latência.
+MRT e MQT descrevem requisições aceitas e posteriormente concluídas. O descarte não é contado como atendimento rápido. MPT é igual a $TS$ pela forma como a fórmula foi definida, então esse resultado sozinho não confirma se o tempo de serviço escolhido representa uma aplicação real. O modelo calcula médias e não acompanha a ordem de atendimento de cada cliente nem os maiores tempos de resposta.
 
-\clearpage
-\twocolumn[{%
-\begin{minipage}{\textwidth}
+\begin{table*}[!t]
 \centering
-\captionof{table}{Parâmetros e resultados consolidados dos 14 cenários principais. $\lambda$ e TP em requisições/s; tempos em segundos; U e DP em percentual. Em todas as linhas, $TS=MPT=0{,}1$ s. Os valores vêm das tabelas do Jupiter, com quatro casas decimais na origem.}
+\caption{Parâmetros e resultados consolidados dos 14 cenários principais. $\lambda$ e TP em requisições/s; tempos em segundos; U e DP em percentual. Em todas as linhas, $TS=MPT=0{,}1$ s. Os valores vêm das tabelas do Jupiter, com quatro casas decimais na origem.}
 \label{tab:consolidada}
 \begin{tabular}{lrrrrrrrr}
 \toprule
@@ -124,40 +119,36 @@ E4-2 & 25 & 2 & 10 & 19,6685 & 0,4475 & 0,3475 & 98,3425 & 21,1799\\
 E4-3 & 25 & 4 & 10 & 25,0140 & 0,1205 & 0,0205 & 62,5350 & 0,1097\\
 \bottomrule
 \end{tabular}
-\end{minipage}
-}]
+\end{table*}
 
 \section{Simulações e resultados}
 \subsection{Planejamento experimental}
-A referência foi definida com $\lambda=20$ requisições/s, $C=2$, $B=10$ e $TS=0{,}1$ s. A demanda coincide com a capacidade nominal de atendimento, $C/TS=20$ requisições/s. Isso permite observar um ponto de pressão sobre o sistema e comparar alternativas de melhoria. Não se pressupõe que esse seja o perfil de uma aplicação real.
+A referência foi definida com $\lambda=20$ requisições/s, $C=2$, $B=10$ e $TS=0{,}1$ s. A demanda coincide com a capacidade nominal de atendimento, $C/TS=20$ requisições/s. Essa escolha permite observar o que acontece quando a demanda alcança a capacidade média dos servidores e comparar formas de melhorar o atendimento. A carga foi escolhida para o exercício.
 
 E1 usa cinco níveis de demanda, de 5 a 25 requisições/s, com incremento de 5. E2 mantém a demanda em 20 e testa um, dois e três servidores. E3 mantém essa mesma demanda e dois servidores, alterando a fila para 2, 10 e 18 vagas. Os limites foram escolhidos para representar uma fila curta, a referência e uma ampliação com o mesmo incremento de oito vagas.
 
-E4 compara três situações: demanda de 15 com dois servidores, demanda de 25 mantendo dois servidores e demanda de 25 com quatro servidores. A fila permanece com dez vagas. A interface executou a varredura cartesiana de $\lambda\in\{15,25\}$ e $C\in\{2,4\}$; a quarta combinação, 15 com quatro servidores, foi mantida nos dados como comparação auxiliar. Ela não substitui os três casos principais da Tabela~\ref{tab:consolidada}.
+E4 compara três situações: demanda de 15 com dois servidores, demanda de 25 mantendo dois servidores e demanda de 25 com quatro servidores. A fila permanece com dez vagas. A interface testou todas as combinações entre as demandas de 15 e 25 e as quantidades de dois e quatro servidores. O caso adicional de 15 com quatro servidores foi mantido nos dados para comparação. Esse caso não substitui os três casos principais da Tabela~\ref{tab:consolidada}.
 
 \subsection{Procedimento e conferência}
-Foi utilizada a opção \textit{Stationary Simulation} do Jupiter 1.17.0. Cada configuração foi avaliada com horizonte de 5.000 s, aquecimento de 500 s, 30 repetições e semente 707. O nível de confiança foi configurado em 95\%, com erro relativo alvo de 2\%. O limite de eventos foi 1.000.000, o paralelismo foi 4 e o timeout foi 60 s. Os valores configurados estão descritos nos arquivos do projeto.
+Foi utilizada a opção \textit{Stationary Simulation} do Jupiter 1.17.0 para estudar o comportamento do sistema após o período inicial. Essa escolha permite comparar o desempenho mantido ao longo do tempo. Cada configuração foi avaliada por 5.000 s, com aquecimento de 500 s, 30 repetições e semente 707. O aquecimento descarta o início da execução, quando a fila ainda está vazia. A semente permite repetir a sequência de números aleatórios usada na simulação. O nível de confiança foi configurado em 95\%, com erro relativo alvo de 2\%. O limite de eventos foi 1.000.000, o paralelismo foi 4 e o limite de tempo da execução foi 60 s. Os valores configurados estão descritos nos arquivos do projeto.
 
-As 30 repetições foram fixadas, assim como os limites mínimo e máximo de amostras. Portanto, o erro alvo não deve ser entendido como precisão garantida para todos os indicadores. Isso é especialmente relevante para descartes raros. Um valor exibido como zero pode decorrer da amostra ou do arredondamento. Não foi adotada a interpretação de que uma execução finita prova a chegada ao regime estacionário.
+Como a quantidade de repetições foi fixada em 30, o erro alvo de 2\% não garante essa precisão para todas as medidas. Isso merece atenção principalmente quando o descarte é raro. Um zero na tabela pode ser resultado do arredondamento ou de não terem ocorrido descartes na amostra. Também não é possível afirmar, apenas pelo tempo de uma execução, que o sistema já chegou a um comportamento estável.
 
-Como conferência, o cenário de referência foi reavaliado com horizonte de 10.000 s. O MRT passou de 0,338783 para 0,339137 s, diferença de aproximadamente 0,10\%. Os intervalos de 95\% foram, respectivamente, [0,3371; 0,3404] e [0,3382; 0,3400] s. A vazão ficou em 18,398385 e 18,398083 requisições/s. Esse resultado indica pouca sensibilidade ao horizonte nesse cenário, sem dispensar os demais cuidados de análise.
+Como conferência, o cenário de referência foi reavaliado com horizonte de 10.000 s. O MRT passou de 0,338783 para 0,339137 s, diferença de aproximadamente 0,10\%. Os intervalos de 95\% foram, respectivamente, [0,3371; 0,3404] e [0,3382; 0,3400] s. A vazão ficou em 18,398385 e 18,398083 requisições/s. A pequena mudança sugere que aumentar o tempo da simulação teve pouco efeito nesse caso, embora isso não garanta a mesma precisão nos outros cenários.
 
-Também foi calculada, separadamente, a distribuição estacionária da fila M/M/$C$/$K$, com $K=B+C$. A recorrência $p_n=p_{n-1}\lambda/[\min(n,C)\mu]$, seguida da normalização, fornece uma referência independente. A rede agregada tem esse comportamento porque não há gargalo adicional. O maior desvio relativo de MRT nos 14 cenários foi inferior a 0,5\%. A solução analítica foi usada somente para conferência: os gráficos e a tabela apresentam resultados obtidos no Jupiter.
+Também foi feita uma conferência separada com um modelo matemático de filas. Ele considera as mesmas hipóteses: chegadas de Poisson, serviço exponencial, vários servidores e capacidade limitada. A maior diferença no MRT dos 14 cenários foi inferior a 0,5\%. Esse cálculo foi usado apenas para conferir a coerência dos valores. Os dados da tabela e dos gráficos continuam sendo os resultados das simulações no Jupiter.
 
-Os CSVs das tabelas de cenários preservam as quatro casas decimais exibidas. A exportação nativa do cenário base também contém os intervalos de confiança. Não foram criados intervalos para os cenários em que a tabela exportada não os fornece.
+Os arquivos CSV mantêm as quatro casas decimais mostradas nas tabelas de cenários. O arquivo exportado do caso de referência também contém intervalos de confiança, que indicam a incerteza das médias estimadas. Para os demais casos, foram usados os valores disponíveis, sem acrescentar intervalos que a tabela não forneceu.
 
-\clearpage
-\twocolumn[{%
-\begin{minipage}{\textwidth}
+\begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{figuras/e1_demanda.pdf}
-\captionof{figure}{E1: efeito da demanda sobre vazão e tempos médios, com $C=2$, $B=10$ e $TS=0{,}1$ s. A linha de demanda mostra as requisições oferecidas; ela não representa conclusões do sistema.}
+\caption{E1: efeito da demanda sobre vazão e tempos médios, com $C=2$, $B=10$ e $TS=0{,}1$ s. A linha de demanda mostra quantas requisições chegam por segundo; a vazão mostra quantas são atendidas.}
 \label{fig:e1}
 \includegraphics[width=\textwidth]{figuras/e2_servidores.pdf}
-\captionof{figure}{E2: efeito do número de servidores sobre resposta, descarte e utilização. Demanda fixa em 20 requisições/s e fila de dez vagas.}
+\caption{E2: efeito do número de servidores sobre resposta, descarte e utilização. Demanda fixa em 20 requisições/s e fila de dez vagas.}
 \label{fig:e2}
-\end{minipage}
-}]
+\end{figure*}
 
 \subsection{E1: efeito da demanda}
 A Figura~\ref{fig:e1} mostra que a vazão acompanha a demanda enquanto existe folga de processamento. Com cinco requisições/s, a utilização média é de aproximadamente 25\% e o MRT fica próximo do próprio tempo de serviço, em 0,1068 s. Ao chegar a 15 requisições/s, a utilização sobe para 74,48\% e a espera média já alcança 0,1081 s, valor ligeiramente superior ao tempo gasto em processamento.
@@ -171,18 +162,15 @@ Com um servidor, a demanda de 20 requisições/s corresponde ao dobro de sua tax
 
 Dois servidores melhoram a vazão, mas ainda deixam o sistema operando próximo de sua capacidade. Com três, o MRT cai para 0,1411 s e o descarte para 0,2555\%. A redução do MRT em relação a dois servidores é de aproximadamente 58,4\%. A utilização cai para 66,41\%, o que representa margem para absorver variações, e não necessariamente desperdício. Entre as três alternativas avaliadas para a demanda de 20, essa configuração apresenta o melhor equilíbrio entre recursos e os indicadores considerados.
 
-\clearpage
-\twocolumn[{%
-\begin{minipage}{\textwidth}
+\begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{figuras/e3_fila.pdf}
-\captionof{figure}{E3: efeito do limite de espera, mantendo 20 requisições/s e dois servidores. Uma fila maior reduz descartes, mas aumenta a permanência das requisições aceitas.}
+\caption{E3: efeito do limite de espera, mantendo 20 requisições/s e dois servidores. Uma fila maior reduz descartes, mas aumenta a permanência das requisições aceitas.}
 \label{fig:e3}
 \includegraphics[width=\textwidth]{figuras/e4_combinados.pdf}
-\captionof{figure}{E4: três cenários principais de demanda e recursos. Em todos, $B=10$ e $TS=0{,}1$ s. Os valores são estimativas pontuais das simulações do Jupiter.}
+\caption{E4: três cenários principais de demanda e recursos. Em todos, $B=10$ e $TS=0{,}1$ s. Os valores são as médias estimadas nas simulações do Jupiter.}
 \label{fig:e4}
-\end{minipage}
-}]
+\end{figure*}
 
 \subsection{E3: efeito da fila}
 Na Figura~\ref{fig:e3}, a fila de duas vagas apresenta descarte de 22,2648\% e MRT de 0,1429 s. O tempo menor não significa que todas as requisições recebem atendimento melhor: uma parcela maior sequer é aceita. Esse resultado precisa ser interpretado junto com a vazão de 15,5498 requisições/s.
@@ -194,29 +182,28 @@ Ao ampliar de dez para dezoito vagas, a vazão cresce apenas cerca de 3,4\%, che
 \subsection{E4: demanda e recursos juntos}
 O primeiro caso da Figura~\ref{fig:e4} apresenta 15 requisições/s com dois servidores: MRT de 0,2081 s e descarte de 0,9533\%. Ao aumentar a demanda para 25 e manter os recursos, o descarte sobe para 21,1799\% e a resposta para 0,4475 s. Essa comparação mostra o risco de conservar uma configuração quando a carga muda.
 
-Com quatro servidores na demanda de 25, o MRT cai para 0,1205 s e o descarte para 0,1097\%. A utilização média é de 62,5350\%. A redução do MRT em relação ao caso sobrecarregado é de aproximadamente 73,1\%. A vazão estimada de 25,0140 fica ligeiramente acima da taxa externa de 25 por causa da variabilidade do estimador $E[\#Ocupados]/TS$. Isso não representa criação de requisições; a diferença é inferior a 0,2\% e deve ser tratada como erro amostral.
+Com quatro servidores na demanda de 25, o MRT cai para 0,1205 s e o descarte para 0,1097\%. A utilização média é de 62,5350\%. A redução do MRT em relação ao caso sobrecarregado é de aproximadamente 73,1\%. A vazão estimada de 25,0140 fica ligeiramente acima da taxa externa de 25 porque a vazão foi estimada a partir da ocupação média dos servidores. A diferença é inferior a 0,2\% e faz parte da incerteza da simulação. Ela não significa que o sistema gerou requisições a mais.
 
-\clearpage
 \subsection{Gargalo e recomendação de dimensionamento}
 Os experimentos indicam que a capacidade de processamento é o principal gargalo do sistema representado. Em E1, aumentar a demanda aproxima os servidores da ocupação total e amplia a fila. Em E3, aumentar somente as vagas melhora a aceitação, porém mantém a taxa de atendimento. E2 mostra que ampliar os recursos de processamento reduz tanto a espera quanto o descarte.
 
-Para tornar a recomendação objetiva, foram adotados dois critérios ilustrativos: MRT abaixo de 0,25 s e descarte abaixo de 1\%, procurando usar a menor quantidade de servidores entre as alternativas avaliadas para a mesma demanda. Esses limites foram escolhidos para a comparação deste trabalho; não são uma exigência do enunciado nem um acordo de nível de serviço medido em uma aplicação real.
+Para tornar a recomendação objetiva, foram adotados dois critérios para esta comparação: MRT abaixo de 0,25 s e descarte abaixo de 1\%, procurando usar a menor quantidade de servidores entre as alternativas avaliadas para a mesma demanda. Esses limites foram escolhidos para a comparação deste trabalho; não são uma exigência do enunciado nem metas fornecidas por uma aplicação real.
 
 Na demanda de 20 requisições/s, um e dois servidores não atendem a esses critérios. Três servidores, com dez vagas, apresentam MRT de 0,1411 s e descarte estimado de 0,2555\%. Assim, recomenda-se essa configuração entre as opções de E2. O ganho em relação à referência é mais interessante do que ampliar a fila para dezoito vagas, pois essa ampliação ainda apresenta descarte de 4,82\% e resposta de 0,5379 s.
 
-Na demanda de 25 requisições/s, quatro servidores com dez vagas atendem aos critérios pelas estimativas pontuais. Essa é a opção recomendada entre as configurações testadas para essa carga. O trabalho não avaliou três servidores nessa taxa; portanto, não é possível afirmar que quatro seja o mínimo global. Uma etapa seguinte seria testar configurações intermediárias e considerar os intervalos de confiança na aceitação de metas próximas do limite.
+Na demanda de 25 requisições/s, quatro servidores com dez vagas atendem aos critérios considerando as médias obtidas. Essa é a opção recomendada entre as configurações testadas para essa carga. O trabalho não avaliou três servidores nessa taxa; portanto, não é possível afirmar que quatro seja a menor quantidade necessária. Seria preciso testar também três servidores e avaliar a incerteza dos resultados antes de aceitar valores muito próximos das metas.
 
-O caso de 15 requisições/s com dois servidores fica próximo da meta de 1\% de descarte. Mesmo com média de 0,9533\%, seria inadequado tratá-lo como garantia de cumprimento do limite. A decisão em produção deveria considerar uma margem, novas repetições e medições da carga. Também não foi definido um valor monetário para os recursos: o número de servidores funciona apenas como um indicador simples da quantidade de capacidade alocada.
+O caso de 15 requisições/s com dois servidores fica próximo da meta de 1\% de descarte. Mesmo com média de 0,9533\%, seria inadequado tratá-lo como garantia de cumprimento do limite. Para uma aplicação real, seria necessário deixar uma margem, fazer mais repetições e medir a demanda. Não foi calculado o custo financeiro de cada configuração. A quantidade de servidores foi usada apenas para comparar quanto recurso cada opção exige.
 
 \subsection{Limitações do estudo}
-O modelo supõe chegadas independentes e tempos exponenciais de serviço. Requisições reais podem ocorrer em rajadas, ter tamanhos diferentes e apresentar tempos de processamento com maior dispersão. Não foram representados atrasos de rede, comunicação entre máquinas, disco, banco de dados, falhas ou concorrência interna de um servidor. Logo, não se pode usar diretamente estes números para contratar infraestrutura de uma aplicação específica.
+O modelo supõe chegadas independentes e tempos exponenciais de serviço. Na prática, muitas requisições podem chegar juntas, ter tamanhos diferentes e levar tempos bastante diferentes para serem processadas. Não foram representados atrasos de rede, comunicação entre máquinas, disco, banco de dados, falhas ou concorrência interna de um servidor. Logo, não se pode usar diretamente estes números para contratar infraestrutura de uma aplicação específica.
 
-A avaliação utiliza médias e não descreve a experiência dos clientes com maiores atrasos, como o percentil 95. A conferência analítica verifica a coerência da implementação sob as mesmas hipóteses, mas não valida essas hipóteses contra um ambiente real. Além disso, os quatro gráficos apresentam estimativas pontuais; os dados disponíveis de confiança do caso base foram discutidos na metodologia, sem estender indevidamente sua precisão aos demais cenários.
+A avaliação usa médias, que não mostram sozinhas o que acontece com as requisições mais demoradas. A conferência matemática ajuda a verificar se os cálculos estão coerentes, mas não confirma se as hipóteses representam uma aplicação real. Os gráficos também não mostram a incerteza de cada média. Os intervalos disponíveis para o caso de referência foram discutidos na metodologia e não devem ser usados como se valessem para todos os cenários.
 
 \section{Conclusão}
-O modelo SPN construído no Jupiter permitiu comparar os efeitos da demanda, dos servidores e da capacidade da fila em um serviço web simplificado. A demanda maior aumentou a ocupação dos recursos, os tempos de espera e os descartes. Aumentar somente a fila reduziu perdas, mas gerou uma troca clara com o tempo de resposta. Já o aumento do número de servidores trouxe melhora simultânea desses indicadores nos casos estudados.
+O modelo SPN construído no Jupiter permitiu comparar os efeitos da demanda, dos servidores e da capacidade da fila em um serviço web simplificado. A demanda maior aumentou a ocupação dos recursos, os tempos de espera e os descartes. Aumentar somente a fila reduziu perdas, mas fez as requisições aceitas esperarem mais. Já o aumento do número de servidores trouxe melhora simultânea desses indicadores nos casos estudados.
 
-Entre as opções avaliadas, três servidores com dez vagas oferecem uma alternativa adequada para 20 requisições/s. Para a carga de 25, a opção de quatro servidores com dez vagas apresentou o melhor resultado entre as configurações testadas. Como continuidade, seria útil medir uma aplicação real, ajustar as distribuições e incluir custos e percentis de resposta. Outra possibilidade seria avaliar políticas de expansão automática, incluindo o tempo de ativação dos novos recursos.
+Entre as opções avaliadas, três servidores com dez vagas oferecem uma alternativa adequada para 20 requisições/s. Para a carga de 25, a opção de quatro servidores com dez vagas apresentou o melhor resultado entre as configurações testadas. Como continuidade, seria útil medir uma aplicação real, ajustar os tempos de chegada e de serviço e considerar os custos e as requisições mais demoradas. Outra possibilidade seria estudar o aumento automático da quantidade de servidores, levando em conta o tempo necessário para ativá-los.
 
 \noindent\textbf{Materiais do trabalho:} modelo, configurações, dados e códigos disponíveis no repositório \url{https://github.com/SamuelTorres51/SD-Jupiter-07}.\par
 \noindent\textbf{Apresentação em vídeo:} pendente de gravação e publicação pelo autor. O link deverá ser incluído nesta versão antes da entrega no SIGAA.
